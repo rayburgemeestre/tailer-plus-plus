@@ -19,7 +19,7 @@ Default timeserver used is: time.google.com:123.
 This program does not have any CPU usage, only when it reacts to inotify events.
 
 
-### Fork of `tailer`
+### Fork
 
 Forked my own project `tailer` (https://github.com/rayburgemeestre/tailer),
 in order to keep that project bloat-free, and add opinionated features such as
@@ -44,7 +44,7 @@ Everything is statically linked, so we don't introduce any dependencies.
 
 Additionally to `tailer`'s implementation, we support centralized logging if specified via the commandline.
 
-For centralized logging, the program first queriesan NTP server to get the correct time at startup.
+For centralized logging, the program first queries an NTP server to get the correct time at startup.
 Note that system time won't be affected. This query is used to make sure we can prepend seconds with, with microsecond precision to each log line, so the centralized logging server can in theory sort log messages from various sources in chronological order somewhat (in case of lag).
 
 To integrate such centralized logging in a program, you can use the `test_server` example created here: https://github.com/rayburgemeestre/beej-plus-plus/.
@@ -66,8 +66,8 @@ yourself, with instructions below. :)
 Sorry, currently only tested on Ubuntu 20.04. If you get this thing working on
 another distro, please let me know how, so I can extend the instructions.
 
-    git clone --recursive https://github.com/rayburgemeestre/tailer++
-    cd tailer
+    git clone --recursive https://github.com/rayburgemeestre/tailer-plus-plus tailer++
+    cd tailer++
     make prepare
     make build
     make install
