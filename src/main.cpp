@@ -9,7 +9,7 @@
 #include <inotify-cpp/NotifierBuilder.h>
 
 #include "beej.h"
-#include "logger.h"
+#include "logger.hpp"
 #include "program_options.h"
 #include "server.h"
 #include "util.h"
