@@ -1,3 +1,9 @@
 [submodule "inotify-cpp"]
 	path = inotify-cpp
 	url = https://github.com/erikzenker/inotify-cpp
+[submodule "NTP-client"]
+	path = NTP-client
+	url = https://github.com/plusangel/NTP-client
+[submodule "beej++"]
+	path = beej++
+	url = https://github.com/rayburgemeestre/beej-plus-plus

@@ -1,3 +1,4 @@
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -7,27 +8,69 @@
 #include <inotify-cpp/FileSystemAdapter.h>
 #include <inotify-cpp/NotifierBuilder.h>
 
+#include "beej.h"
+#include "logger.h"
+#include "program_options.h"
+#include "server.h"
+#include "util.h"
+
 using namespace inotify;
 
 int main(int argc, char** argv) {
-  if (argc <= 1) {
-    std::cout << "Usage: " << argv[0] << " <directory>" << std::endl;
-    exit(0);
+  program_options options(argc, argv);
+
+  std::unique_ptr<server> serv = nullptr;
+  std::unique_ptr<beej::client> client = nullptr;
+
+  if (argc > 2) {
+    serv = std::make_unique<server>(options);
+    client = std::make_unique<beej::client>(options.server_host, std::stoi(options.server_port));
+    client->connect();
   }
+
   std::unordered_map<std::string, size_t> files;
   std::unordered_map<std::string, std::string> buffers;
   std::mutex mut;
 
-  // Read all files in the directory and record all the file sizes
-  using recursive_directory_iterator = std::filesystem::recursive_directory_iterator;
-  for (const auto& entry : recursive_directory_iterator(argv[1])) {
-    if (!entry.is_regular_file()) continue;
-    files[entry.path().string()] = entry.file_size();
+  const auto hostname = get_hostname();
+  std::cout << "Our Host Name: " << hostname << std::endl;
+
+  logger log([&](const std::string& line) {
+    static std::stringstream ss;
+    if (client) {
+      auto time = (serv->start_time() + serv->current_time());
+      time -= (10000 * (int64_t)(time / 10000.));
+      if (time < 1000) ss << "0";
+      if (time < 100) ss << "0";
+      if (time < 10) ss << "0";
+      ss << std::fixed << time << " [" << hostname << "] " << line;
+      client->send(ss.str());
+    } else {
+      std::cout << line << std::flush;
+    }
+    ss.str("");
+    ss.clear();
+  });
+
+  const auto filepath = argv[1];
+  const auto s = std::filesystem::status(filepath);
+  if (std::filesystem::is_directory(s)) {
+    // Read all files in the directory and record all the file sizes
+    using recursive_directory_iterator = std::filesystem::recursive_directory_iterator;
+    for (const auto& entry : recursive_directory_iterator(filepath)) {
+      if (!entry.is_regular_file()) continue;
+      files[entry.path().string()] = entry.file_size();
+    }
+  } else if (std::filesystem::is_regular_file(s)) {
+    // Read file in and record the file sizes
+    files[filepath] = std::filesystem::file_size(std::filesystem::path(filepath));
+  } else {
+    options.usage(argv);
   }
 
-  std::cout << "Initialized " << files.size() << " files." << std::endl;
+  log << "Initialized " << files.size() << " files." << std::endl;
 
-  inotifypp::filesystem::path path(argv[1]);
+  inotifypp::filesystem::path path(filepath);
 
   auto handleNotification = [&](Notification notification) {
     auto full_file_path = notification.path.string();
@@ -53,7 +96,7 @@ int main(int argc, char** argv) {
         if (current_size < files[full_file_path]) {
           files[full_file_path] = 0;
           fd.seekg(0);
-          std::cout << filename << ": *** truncated ***" << std::endl;
+          log << filename << ": *** truncated ***" << std::endl;
         }
 
         // Keep reading as long as we're still behind the current files last position
@@ -79,7 +122,7 @@ int main(int argc, char** argv) {
               break;
             }
             // Print prefixed with the basename of the file
-            std::cout << filename << ": " << buffers[full_file_path].substr(0, pos) << std::endl;
+            log << filename << ": " << buffers[full_file_path].substr(0, pos) << std::endl;
             buffers[full_file_path] = buffers[full_file_path].substr(pos + 1);
           }
         }
@@ -87,8 +130,8 @@ int main(int argc, char** argv) {
         files.erase(full_file_path);
         buffers.erase(full_file_path);
       } else {
-        std::cout << "Event " << notification.event << " on " << notification.path << " at "
-                  << notification.time.time_since_epoch().count() << " was triggered." << std::endl;
+        log << "Event " << notification.event << " on " << notification.path << " at "
+            << notification.time.time_since_epoch().count() << " was triggered." << std::endl;
       }
     } catch (std::filesystem::filesystem_error& err) {
       std::cerr << err.what() << std::endl;
@@ -102,7 +145,7 @@ int main(int argc, char** argv) {
                       .onEvents(events, handleNotification)
                       .onUnexpectedEvent(handleUnexpectedNotification);
 
-  std::cout << "Listening with inotify.. Press Control+C to stop the process." << std::endl << "---" << std::endl;
+  log << "Listening with inotify.. Press Control+C to stop the process." << std::endl << "---" << std::endl;
 
   notifier.run();
 
