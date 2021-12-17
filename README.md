@@ -53,9 +53,9 @@ This example by itself is sufficient to receive log messages, as there is no fan
 
 ## Binary distribution
 
-I've tagged version v1.0.0. and uploaded a release on GitHub:
+I've tagged version v-1.0.0. and uploaded a release on GitHub:
 
-https://github.com/rayburgemeestre/tailer++/releases/tag/v1.0.1
+https://github.com/rayburgemeestre/tailer-plus-plus/releases/tag/v-1.0.0
 
 If you trust me you can use the binary, otherwise you have to compile it
 yourself, with instructions below. :)
