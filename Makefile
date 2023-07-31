@@ -10,9 +10,11 @@ prepare:  ## set up build environment
 	make -j $$(nproc)
 	pushd beej++ && \
 	make
+	pushd NTP-client && \
+	cmake . && make
 
 build: ## build tailer++
-	g++ -static-libgcc -static-libstdc++ -Wall -O2 -std=c++17 -Iinotify-cpp/src/include -Ibeej++/src -INTP-client/ src/*.cpp -o tailer++ inotify-cpp/src/libinotify-cpp.a $$PWD/beej++/build/libbeej++-static.a $$PWD/NTP-client/libclient.a -lpthread
+	g++ -static-libgcc -static-libstdc++ -Wall -O2 -std=c++17 -Iinotify-cpp/src/include -Ibeej++/src -INTP-client/include/ src/*.cpp -o tailer++ inotify-cpp/src/libinotify-cpp.a $$PWD/beej++/build/libbeej++-static.a $$PWD/NTP-client/libntp_client.a -lpthread
 
 install:  ## install to /usr/local/bin/tailer++
 	sudo cp -prv tailer++ /usr/local/bin/tailer++

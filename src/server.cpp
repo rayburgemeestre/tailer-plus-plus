@@ -1,7 +1,7 @@
 #include "server.h"
 #include "program_options.h"
 
-#include "client.hpp"
+#include "ntp_client.hpp"
 
 #include <iostream>
 
@@ -11,10 +11,40 @@ server::server(const program_options& options) {
 
   start = std::chrono::high_resolution_clock::now();
   std::cout << "NTP Time: " << std::fixed << ntptime << std::endl;
+
+  auto now_ms = std::chrono::time_point_cast<std::chrono::milliseconds>(start);
+  auto epoch = now_ms.time_since_epoch();
+  start_epoch = std::chrono::duration_cast<std::chrono::milliseconds>(epoch).count();
+
+  auto epoch_server_ms = ntptime;  // client.request_time();
+
+  if (0 == epoch_server_ms) exit(1);
+
+  // The function ctime receives the timestamps in seconds.
+  time_t epoch_server = (uint32_t)(epoch_server_ms / 1000);
+
+  std::cout << "Server time: " << ctime(&epoch_server);
+  std::cout << "Timestamp server: " << (uint32_t)epoch_server << "\n\n";
+
+  time_t local_time;
+  local_time = time(0);
+
+  std::cout << "System time is " << (epoch_server - local_time) << " seconds off\n";
 }
 
-double server::start_time() {
+double server::ntp_start_time() {
   return ntptime;
+}
+
+double server::our_start_time() {
+  return start_epoch;
+}
+
+double server::our_time_now() {
+  auto start = std::chrono::high_resolution_clock::now();
+  auto now_ms = std::chrono::time_point_cast<std::chrono::milliseconds>(start);
+  auto epoch = now_ms.time_since_epoch();
+  return std::chrono::duration_cast<std::chrono::milliseconds>(epoch).count();
 }
 
 double server::current_time() {

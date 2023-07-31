@@ -38,12 +38,13 @@ int main(int argc, char** argv) {
   logger log([&](const std::string& line) {
     static std::stringstream ss;
     if (client) {
-      auto time = (serv->start_time() + serv->current_time());
-      time -= (10000 * (int64_t)(time / 10000.));
-      if (time < 1000) ss << "0";
-      if (time < 100) ss << "0";
-      if (time < 10) ss << "0";
-      ss << std::fixed << time << " [" << hostname << "] " << line;
+      auto offset = (serv->our_start_time() - serv->our_time_now());
+      auto time = serv->ntp_start_time() - offset;
+      time_t epoch_seconds = static_cast<time_t>(time / 1000);
+      std::tm* tm2 = std::localtime(&epoch_seconds);
+      int millis = static_cast<size_t>(time) % 1000;
+      ss << std::put_time(tm2, "%Y-%m-%d %H:%M:%S") << "." << std::setfill('0') << std::setw(3) << millis;
+      ss << " [" << hostname << "] " << line;
       client->send(ss.str());
     } else {
       std::cout << line << std::flush;
@@ -52,7 +53,7 @@ int main(int argc, char** argv) {
     ss.clear();
   });
 
-  const auto filepath = argv[1];
+  auto filepath = std::string(argv[1]);
   const auto s = std::filesystem::status(filepath);
   if (std::filesystem::is_directory(s)) {
     // Read all files in the directory and record all the file sizes
@@ -64,6 +65,15 @@ int main(int argc, char** argv) {
   } else if (std::filesystem::is_regular_file(s)) {
     // Read file in and record the file sizes
     files[filepath] = std::filesystem::file_size(std::filesystem::path(filepath));
+  } else if (filepath == "-" || filepath == "/dev/stdin") {
+    // special case where we cannot use inotify
+    log << "special case for stdin" << std::endl;
+    std::string line;
+    while (std::getline(std::cin, line)) {
+      // TODO: support custom label here...
+      log << "*stdin*: " << line << std::endl;
+    }
+    exit(0);
   } else {
     options.usage(argv);
   }
